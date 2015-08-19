@@ -1,0 +1,29 @@
+---
+title: "qn3"
+author: "Shreyas K.S."
+date: "August 19, 2015"
+output: word_document
+---
+
+## Association Rule Mining with Groceries
+```{r, echo=F, include=F}
+library(arules) 
+groc <-read.transactions("groceries.txt", format="basket", sep=",")
+groc <- groc[!duplicated(groc)]
+```
+
+The data contains rows with baskets of goods purchased by each customer. First, lets generate association rules with the apriori principle and inspect it. The support was set at 0.01, which means a combination of goods would have to be purchased 1% of overall baskets to be included in our analysis. The confidence is set at 0.6, and maximum length is 4, since I felt 60% is a reasonable confidence level for meaningful interpretation, and large baskets will not impact the analysis by much.
+
+```{r, echo=F}
+grocery <- apriori(groc, parameter=list(support=.01, confidence=.6, maxlen=4))
+```
+
+269 rules have been generated. Lets subset the results of the rules in a few ways:
+
+```{r, echo=F}
+inspect(subset(grocery, subset=lift > 3))
+inspect(subset(grocery, subset=confidence > 0.7))
+inspect(subset(grocery, subset=support > .01 & confidence > 0.6))
+
+```
+We see that a lot of rules end up modeling combinations of items in baskets that also include dairy items such as yogurt and milk or different types of vegetables. We can see that people who buy vegetables and fruits in general tend to purchase root vegetables, and people who buy certain combinations of yogurt and fruit are likely to purchase whole milk.

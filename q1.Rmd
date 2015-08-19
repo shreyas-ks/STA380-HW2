@@ -1,0 +1,77 @@
+---
+title: "Qn1"
+author: "Shreyas K.S."
+date: "August 19, 2015"
+output: word_document
+---
+
+
+```{r, include=F}
+require(ggplot2)
+require(gridExtra)
+require(RColorBrewer)
+my_seed = set.seed(48392)
+```
+
+## Introduction
+This exercise goes over 3 questions: exploratory data analysis at ABIA, author attribution for Reuters articles, and association rules in music.
+
+## Exploratory Data Analysis: Flights at ABIA
+Austin Bergstrom International Airport (ABIA) is the only major domestic airport at Austin, Texas. The data set being explored here contains flights in and out of ABIA in 2008. First, lets start by loading and partitioning the data into incoming and outgoing flights from/to Austin:
+
+```{r}
+abia = read.csv("ABIA.csv", header=TRUE)
+incoming <- subset(abia, Dest == "AUS")
+outgoing <- subset(abia, Origin == "AUS")
+```
+
+Since Austin is known for its beautiful weather, I start by looking at how forecasted weather delay relates to actual delay in departure. Both these attributes correspond to the airport of origin, hence they can be compared. I start by cleaning up the data. I drop NA values in Weather Delays for incoming and outgoing flights.
+
+
+```{r}
+in_weather <- subset(incoming, !is.na(incoming[,26]))
+in_weather <- subset(in_weather, WeatherDelay>0)
+out_weather <- subset(outgoing, !is.na(incoming[,26]))
+out_weather <- subset(out_weather, WeatherDelay>0)
+
+```
+
+The following set of plots shows the difference in forecasted delay due to weather and actual delay in departure for incoming and outgoing flights:
+
+```{r, echo=FALSE}
+plot1 <- ggplot(in_weather, aes(WeatherDelay, DepDelay )) + geom_point() + 
+  geom_abline(a=0, b=1) + ggtitle("Incoming Flights") + guides(col=guide_legend(ncol=2))
+plot2 <- ggplot(out_weather, aes(WeatherDelay, DepDelay)) + geom_point() + 
+  geom_abline(a=0, b=1) + ggtitle("Outgoing Flights") + guides(col=guide_legend(ncol=2))
+
+grid.arrange(plot1, plot2, nrow=2, ncol=1)
+```
+
+A line of slope 1 and origin 0 (Line formula:`y=x`) is included in the plots. Being along the line means forecasted weather delay was exactly equal to actual departure delay. A point below the line represents a flight taking off in less time than its predicted delay due to weather. 
+
+One extremely surprising observation is that for flights going out of Austin, every time there a weather delay is forecasted, the flight is delayed by the time of predicted weather delay or higher. This is helpful information for travelers out of Austin when it comes to planning their trip to the airport.
+
+The differences between incoming and outgoing flights may be because of two reasons. An airport may generally be safer (less security delay), less busy (less overall aircrafts compared to other airports and less late aircraft delay), or have better airport staff (less carrier delay). Let's look closely at the airports with delays. Lets try to analyze this in more detail.
+
+```{r, echo=F}
+ggplot(in_weather, aes(WeatherDelay, DepDelay, size = Distance)) + geom_point(aes(colour=UniqueCarrier),shape=24) + geom_abline(a=0, b=1) + ggtitle("Delays in Incoming Flights") + guides(col=guide_legend(ncol=2))
+```
+
+
+The above graph is similar to the visuals we saw earlier, but gives us more information. The color of each point is the carrier. We can't see many clear trends in carriers when it comes to excess delay. However, we can see that more long distance flights are involved when there is excess delay. 
+
+Lets call the difference between expected weather delay and actual departure delay excess delays. Excess delays can be represented by the vertical distance between a point and the line. Lets subset the data further to look into this. There are 612 flights which have been delayed due to weather AND other reasons. The following plot shows the excess delay (in minutes) against origin:
+
+```{r, echo=F}
+in_weather$ex_del = in_weather$DepDelay - in_weather$WeatherDelay
+out_weather$ex_del = out_weather$DepDelay - out_weather$WeatherDelay
+exdel = rbind(in_weather, out_weather)
+excess_delay <- subset(exdel, ex_del>0)
+
+ggplot(excess_delay, aes(Origin,ex_del)) + geom_bin2d() + ylab("Excess Delay") + xlab("Origin") + 
+  ggtitle("Excess Delay by Origin") + theme(axis.text.x  = element_text(angle=90))
+```
+
+We can see that most of the points are towards the lower half of the plot, which means excess delays were generally less than 200 minutes. The lighter shades are seen in Austin (AUS), Dallas Fort Worth (DFW), Chicago O'Hare (ORD), George Bush Intercontinental Houston (IAH), Hartsfield Jackson Atlanta (ATL). These airports had most excess delays. This is not very surprising, since most of these airports are major international airports. Additionally, DFW, ORD, and IAH are hubs for either United or American Airlines, which are the two biggest airlines in the country. Delta uses ATL as a hub. A delay in one of these hub airports may cascade and go on to affect other flights, which is what we might be seeing here.
+
+It is generally difficult to map out the exact reason for a cancellation or delay in airplanes. However, exploratory analysis of the data shows that in Austin, any predicted weather delay results in a delay of longer, and hub airports tend to have a higher frequency of delays.
